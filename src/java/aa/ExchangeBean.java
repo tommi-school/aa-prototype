@@ -2,8 +2,14 @@ package aa;
 
 import java.io.*;
 import java.util.*;
+import java.sql.*;
 
 public class ExchangeBean {
+    
+    // change the dbURL if necessary.
+    String dbURL = "jdbc:mysql://localhost/exchange";
+    String dbDriver = "com.mysql.jdbc.Driver";
+    private Connection dbCon;
 
     // location of log files - change if necessary
     private final String MATCH_LOG_FILE = "c:\\temp\\matched.log";
@@ -33,6 +39,20 @@ public class ExchangeBean {
     // the remaining credit limit should not go below 0 under any circumstance!
     private Hashtable<String, Integer> creditRemaining = new Hashtable<String, Integer>();
 
+    // connects to the database using root. change your database id/password here if necessary
+    public boolean connect() throws ClassNotFoundException, SQLException {
+        Class.forName(dbDriver);
+
+        // login credentials to your MySQL server
+        dbCon = DriverManager.getConnection(dbURL, "root", "password"); 
+        return true;
+    }
+
+    // closes the DB connection
+    public void close() throws SQLException {
+        dbCon.close();
+    }
+    
     // this method is called once at the end of each trading day. It can be called manually, or by a timed daemon
     // this is a good chance to "clean up" everything to get ready for the next trading day
     public void endTradingDay() {
@@ -347,5 +367,19 @@ public class ExchangeBean {
             return latestPriceForNtu;
         }
         return -1; // no such stock
+    }
+    
+    // used to execute a generic select SQL statement
+    public ResultSet execSQL(String sql) throws SQLException {
+        Statement s = dbCon.createStatement();
+        ResultSet r = s.executeQuery(sql);
+        return (r == null) ? null : r;
+    }
+
+    // used to execute an update SQL statement.
+    public int updateSQL(String sql) throws SQLException {
+        Statement s = dbCon.createStatement();
+        int r = s.executeUpdate(sql);
+        return (r == 0) ? 0 : r;
     }
 }
