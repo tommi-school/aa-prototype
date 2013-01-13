@@ -279,7 +279,7 @@ public class ExchangeBean {
             // this is a BUYING trade - the transaction happens at the higest bid's timestamp, and the transaction price happens at the lowest ask
             MatchedTransaction match = new MatchedTransaction(highestBid, lowestAsk, highestBid.getDate(), lowestAsk.getPrice());
             String sqlMatchTransaction =
-                    String.format("insert into transaction (bid_id, ask_id, date, price, stock) values (%d, %d, '%s', %d '%s');",
+                    String.format("insert into transaction (bid_id, ask_id, date, price, stock) values (%d, %d, '%s', %d, '%s');",
                     highestBid.getId(), lowestAsk.getId(), highestBid.getFormattedDate(), lowestAsk.getPrice(), highestBid.getStock());
             updateSQL(sqlMatchTransaction);
 
