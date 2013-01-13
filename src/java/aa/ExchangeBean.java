@@ -371,6 +371,26 @@ public class ExchangeBean {
         return -1; // no such stock
     }
 
+    private Bid getBid(int id) throws SQLException {
+        Bid bid = null;
+        ResultSet rs = execSQL("select * from bid where id=" + id);
+        while (rs.next()) {
+            bid = new Bid(rs.getInt("id"), rs.getString("stock"), rs.getInt("price"),
+                    rs.getString("user"), new java.util.Date(rs.getTimestamp("date").getTime()));
+        }
+        return bid;
+    }
+
+    private Ask getAsk(int id) throws SQLException {
+        Ask ask = null;
+        ResultSet rs = execSQL("select * from ask where id=" + id);
+        while (rs.next()) {
+            ask = new Ask(rs.getInt("id"), rs.getString("stock"), rs.getInt("price"),
+                    rs.getString("user"), new java.util.Date(rs.getTimestamp("date").getTime()));
+        }
+        return ask;
+    }
+
     // used to execute a generic select SQL statement
     public ResultSet execSQL(String sql) throws SQLException {
         Statement s = dbCon.createStatement();
