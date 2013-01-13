@@ -19,6 +19,9 @@
         if (session.getAttribute("authenticatedUser")==null){
              %> <jsp:forward page = "login.jsp" /> <%
         }
+        
+        exchangeBean.connect();
+        
         String userId = (String) session.getAttribute("userId");
         String stock = request.getParameter("stock").trim();
         session.setAttribute("stock",stock);
@@ -29,6 +32,8 @@
         // submit the buy request
         Bid newBid = new Bid(stock, bidPrice, userId);
         boolean bidIsAccepted = exchangeBean.placeNewBidAndAttemptMatch(newBid);
+        
+        exchangeBean.close();
 
         // forward to either buySuccess or buyFail depending on returned result
         if (bidIsAccepted){ %>

@@ -13,8 +13,9 @@
         <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
         <title>Show Unfulfilled Orders</title>
     </head>
-
-
+    
+    <% exchangeBean.connect(); %>
+    
      <BODY>
             <!-- unfulfilled bids of SMU -->
             <table border="1">
@@ -105,4 +106,6 @@
         <li><a href="viewOrders.jsp">Unfulfilled orders</a></li>
     </ul>
     </BODY>
+    
+    <% exchangeBean.close(); %>
 </html>

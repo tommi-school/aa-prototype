@@ -18,8 +18,10 @@
     <h1>Your Trading Day has ended!</h1>
 
     <%
+      exchangeBean.connect();
       exchangeBean.endTradingDay(); // clean up instance variables
       session.invalidate();
+      exchangeBean.close();
     %>
 
   </body>

@@ -19,6 +19,9 @@
         if (session.getAttribute("authenticatedUser")==null){
              %> <jsp:forward page = "login.jsp" /> <%
         }
+        
+        exchangeBean.connect();
+        
         String userId = (String) session.getAttribute("userId");
         String stock = request.getParameter("stock").trim();
         session.setAttribute("stock",stock);
@@ -29,6 +32,8 @@
         // submit the sell request
         Ask newAsk = new Ask(stock, askPrice, userId);
         exchangeBean.placeNewAskAndAttemptMatch(newAsk);
+        
+        exchangeBean.close();
 %>
         <jsp:forward page = "sellSuccess.jsp" />
     </body>

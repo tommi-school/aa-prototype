@@ -13,8 +13,9 @@
         <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
         <title>Show Current Stats</title>
     </head>
-
-
+    
+    <% exchangeBean.connect(); %>
+     
      <BODY>
             <table border="1">
                 <thead>
@@ -96,4 +97,6 @@
         <li><a href="viewOrders.jsp">Unfulfilled orders</a></li>
     </ul>
     </BODY>
+    
+    <% exchangeBean.close(); %>
 </html>
