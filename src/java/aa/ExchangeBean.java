@@ -201,13 +201,22 @@ public class ExchangeBean {
     }
 
     // call this to append all matched transactions in matchedTransactions to log file and clear matchedTransactions
-    private void logMatchedTransactions() {
+    private void logMatchedTransactions() throws SQLException {
         try {
             PrintWriter outFile = new PrintWriter(new FileWriter(MATCH_LOG_FILE, true));
-            for (MatchedTransaction m : matchedTransactions) {
-                outFile.append(m.toString() + "\n");
+
+            ResultSet rs = execSQL("select * from transaction");
+            while (rs.next()) {
+                Bid bid = getBid(rs.getInt("bid_id"));
+                Ask ask = getAsk(rs.getInt("ask_id"));
+                String aTransaction = "stock: " + rs.getString("stock") + ", amt: "
+                        + rs.getInt("price") + ", bidder userId: " + bid.getUserId()
+                        + ", seller userId: " + ask.getUserId() + ", date: "
+                        + new java.util.Date(rs.getTimestamp("date").getTime());
+                outFile.append(aTransaction + "\n");
             }
-            matchedTransactions.clear(); // clean this out
+
+            updateSQL("delete from transaction");
             outFile.close();
         } catch (IOException e) {
             // Think about what should happen here...
