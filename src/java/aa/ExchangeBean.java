@@ -332,7 +332,6 @@ public class ExchangeBean {
             String sqlMatchTransaction =
                     String.format("insert into transaction (bid_id, ask_id, date, price, stock) values (%d, %d, '%s', %d, '%s');",
                     highestBid.getId(), lowestAsk.getId(), lowestAsk.getFormattedDate(), highestBid.getPrice(), highestBid.getStock());
-            System.out.println(sqlMatchTransaction);
             updateSQL(sqlMatchTransaction);
 
             // to be included here: inform Back Office Server of match
