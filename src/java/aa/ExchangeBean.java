@@ -46,18 +46,18 @@ public class ExchangeBean {
     public void close() throws SQLException {
         dbCon.close();
     }
-    
+
     // this method is called once at the end of each trading day. It can be called manually, or by a timed daemon
     // this is a good chance to "clean up" everything to get ready for the next trading day
-    public void endTradingDay() {
+    public void endTradingDay() throws SQLException {
         // reset attributes
         latestPriceForSmu = -1;
         latestPriceForNus = -1;
         latestPriceForNtu = -1;
 
         // dump all unfulfilled buy and sell orders
-        unfulfilledAsks.clear();
-        unfulfilledBids.clear();
+        updateSQL("delete from ask");
+        updateSQL("delete from bid");
 
         // reset all credit limits of users
         creditRemaining.clear();
@@ -66,13 +66,13 @@ public class ExchangeBean {
     // returns a String of unfulfilled bids for a particular stock
     // returns an empty string if no such bid
     // bids are separated by <br> for display on HTML page
-    public String getUnfulfilledBidsForDisplay(String stock) {
+    public String getUnfulfilledBidsForDisplay(String stock) throws SQLException {
         String returnString = "";
-        for (int i = 0; i < unfulfilledBids.size(); i++) {
-            Bid bid = unfulfilledBids.get(i);
-            if (bid.getStock().equals(stock)) {
-                returnString += bid.toString() + "<br />";
-            }
+        ResultSet rs = execSQL("select * from bid where stock='" + stock + "' and has_transacted is null");
+        while (rs.next()) {
+            Bid bid = new Bid(rs.getInt("id"), rs.getString("stock"), rs.getInt("price"),
+                    rs.getString("user"), new java.util.Date(rs.getTimestamp("date").getTime()));
+            returnString += bid.toString() + "<br />";;
         }
         return returnString;
     }
@@ -80,20 +80,20 @@ public class ExchangeBean {
     // returns a String of unfulfilled asks for a particular stock
     // returns an empty string if no such ask
     // asks are separated by <br> for display on HTML page
-    public String getUnfulfilledAsks(String stock) {
+    public String getUnfulfilledAsks(String stock) throws SQLException {
         String returnString = "";
-        for (int i = 0; i < unfulfilledAsks.size(); i++) {
-            Ask ask = unfulfilledAsks.get(i);
-            if (ask.getStock().equals(stock)) {
-                returnString += ask.toString() + "<br />";
-            }
+        ResultSet rs = execSQL("select * from ask where stock='" + stock + "' and has_transacted is null");
+        while (rs.next()) {
+            Ask ask = new Ask(rs.getInt("id"), rs.getString("stock"), rs.getInt("price"), 
+                    rs.getString("user"), new java.util.Date(rs.getTimestamp("date").getTime()));
+            returnString += ask.toString() + "<br />";
         }
         return returnString;
     }
 
     // returns the highest bid for a particular stock
     // returns -1 if there is no bid at all
-    public int getHighestBidPrice(String stock) {
+    public int getHighestBidPrice(String stock) throws SQLException {
         Bid highestBid = getHighestBid(stock);
         if (highestBid == null) {
             return -1;
@@ -104,22 +104,19 @@ public class ExchangeBean {
 
     // retrieve unfulfiled current (highest) bid for a particular stock
     // returns null if there is no unfulfiled bid for this stock
-    private Bid getHighestBid(String stock) {
+    //if there are 2 bids of the same amount, the earlier one is considered the highest bid
+    private Bid getHighestBid(String stock) throws SQLException {
         Bid highestBid = new Bid(null, 0, null);
-        for (int i = 0; i < unfulfilledBids.size(); i++) {
-            Bid bid = unfulfilledBids.get(i);
-            if (bid.getStock().equals(stock) && bid.getPrice() >= highestBid.getPrice()) {
-                // if there are 2 bids of the same amount, the earlier one is considered the highest bid
-                if (bid.getPrice() == highestBid.getPrice()) {
-                    // compare dates
-                    if (bid.getDate().getTime() < highestBid.getDate().getTime()) {
-                        highestBid = bid;
-                    }
-                } else {
-                    highestBid = bid;
-                }
-            }
+        String sql = String.format(
+                "select * from bid where stock='%s' and price=(select max(price) from bid where stock='%s' and has_transacted is null) and date=(select min(date) from bid where stock='%s' and price=(select max(price) from bid where stock='%s' and has_transacted is null));",
+                stock, stock, stock, stock);
+
+        ResultSet rs = execSQL(sql);
+        while (rs.next()) {
+            highestBid = new Bid(rs.getInt("id"), rs.getString("stock"), rs.getInt("price"),
+                    rs.getString("user"), new java.util.Date(rs.getTimestamp("date").getTime()));
         }
+
         if (highestBid.getUserId() == null) {
             return null; // there's no unfulfilled bid at all!
         }
@@ -128,7 +125,7 @@ public class ExchangeBean {
 
     // returns the lowest ask for a particular stock
     // returns -1 if there is no ask at all
-    public int getLowestAskPrice(String stock) {
+    public int getLowestAskPrice(String stock) throws SQLException {
         Ask lowestAsk = getLowestAsk(stock);
         if (lowestAsk == null) {
             return -1;
@@ -139,22 +136,18 @@ public class ExchangeBean {
 
     // retrieve unfulfiled current (lowest) ask for a particular stock
     // returns null if there is no unfulfiled asks for this stock
-    private Ask getLowestAsk(String stock) {
+    // if there are 2 asks of the same ask amount, the earlier one is considered the highest ask
+    private Ask getLowestAsk(String stock) throws SQLException {
         Ask lowestAsk = new Ask(null, Integer.MAX_VALUE, null);
-        for (int i = 0; i < unfulfilledAsks.size(); i++) {
-            Ask ask = unfulfilledAsks.get(i);
-            if (ask.getStock().equals(stock) && ask.getPrice() <= lowestAsk.getPrice()) {
-                // if there are 2 asks of the same ask amount, the earlier one is considered the highest ask
-                if (ask.getPrice() == lowestAsk.getPrice()) {
-                    // compare dates
-                    if (ask.getDate().getTime() < lowestAsk.getDate().getTime()) {
-                        lowestAsk = ask;
-                    }
-                } else {
-                    lowestAsk = ask;
-                }
-            }
+        String sql = String.format("select * from ask where stock='%s' and price=(select min(price) from ask where stock='%s' and has_transacted is null) and date=(select min(date) from ask where stock='%s' and price=(select min(price) from ask where stock='%s' and has_transacted is null));",
+                stock, stock, stock, stock);
+
+        ResultSet rs = execSQL(sql);
+        while (rs.next()) {
+            lowestAsk = new Ask(rs.getInt("id"), rs.getString("stock"), rs.getInt("price"),
+                    rs.getString("user"), new java.util.Date(rs.getTimestamp("date").getTime()));
         }
+
         if (lowestAsk.getUserId() == null) {
             return null; // there's no unfulfilled asks at all!
         }
@@ -245,7 +238,7 @@ public class ExchangeBean {
     // call this method immediatley when a new bid (buying order) comes in
     // this method returns false if this buy order has been rejected because of a credit limit breach
     // it returns true if the bid has been successfully added
-    public boolean placeNewBidAndAttemptMatch(Bid newBid) {
+    public boolean placeNewBidAndAttemptMatch(Bid newBid) throws SQLException, ClassNotFoundException {
         // step 0: check if this bid is valid based on the buyer's credit limit
         boolean okToContinue = validateCreditLimit(newBid);
         if (!okToContinue) {
@@ -253,16 +246,19 @@ public class ExchangeBean {
         }
 
         // step 1: insert new bid into unfulfilledBids
-        unfulfilledBids.add(newBid);
+        String sql = String.format(
+                "insert into bid (stock, price, user, date) values ('%s', %s, '%s', '%s');",
+                newBid.getStock(), newBid.getPrice(), newBid.getUserId(), newBid.getFormattedDate());
+        updateSQL(sql);
 
         // step 2: check if there is any unfulfilled asks (sell orders) for the new bid's stock. if not, just return
         // count keeps track of the number of unfulfilled asks for this stock
         int count = 0;
-        for (int i = 0; i < unfulfilledAsks.size(); i++) {
-            if (unfulfilledAsks.get(i).getStock().equals(newBid.getStock())) {
-                count++;
-            }
+        ResultSet rs = execSQL("select count(*) from ask where stock = '" + newBid.getStock() + "';");
+        while (rs.next()) {
+            count = rs.getInt(1);
         }
+
         if (count == 0) {
             return true; // no unfulfilled asks of the same stock
         }
@@ -277,11 +273,15 @@ public class ExchangeBean {
         // A match happens if the highest bid is bigger or equal to the lowest ask
         if (highestBid.getPrice() >= lowestAsk.getPrice()) {
             // a match is found!
-            unfulfilledBids.remove(highestBid);
-            unfulfilledAsks.remove(lowestAsk);
+            updateSQL("update bid set has_transacted=1 where id=" + highestBid.getId());  //remove highest bid
+            updateSQL("update ask set has_transacted=1 where id=" + lowestAsk.getId());  //remove lowest ask
+
             // this is a BUYING trade - the transaction happens at the higest bid's timestamp, and the transaction price happens at the lowest ask
             MatchedTransaction match = new MatchedTransaction(highestBid, lowestAsk, highestBid.getDate(), lowestAsk.getPrice());
-            matchedTransactions.add(match);
+            String sqlMatchTransaction =
+                    String.format("insert into transaction (bid_id, ask_id, date, price, stock) values (%d, %d, '%s', %d '%s');",
+                    highestBid.getId(), lowestAsk.getId(), highestBid.getFormattedDate(), lowestAsk.getPrice(), highestBid.getStock());
+            updateSQL(sqlMatchTransaction);
 
             // to be included here: inform Back Office Server of match
             // to be done in v1.0
@@ -294,18 +294,21 @@ public class ExchangeBean {
     }
 
     // call this method immediatley when a new ask (selling order) comes in
-    public void placeNewAskAndAttemptMatch(Ask newAsk) {
+    public void placeNewAskAndAttemptMatch(Ask newAsk) throws SQLException {
         // step 1: insert new ask into unfulfilledAsks
-        unfulfilledAsks.add(newAsk);
+        String sql = String.format(
+                "insert into ask (stock, price, user, date) values ('%s', %s, '%s', '%s');",
+                newAsk.getStock(), newAsk.getPrice(), newAsk.getUserId(), newAsk.getFormattedDate());
+        updateSQL(sql);
 
         // step 2: check if there is any unfulfilled bids (buy orders) for the new ask's stock. if not, just return
         // count keeps track of the number of unfulfilled bids for this stock
         int count = 0;
-        for (int i = 0; i < unfulfilledBids.size(); i++) {
-            if (unfulfilledBids.get(i).getStock().equals(newAsk.getStock())) {
-                count++;
-            }
+        ResultSet rs = execSQL("select count(*) from bid where stock = '" + newAsk.getStock() + "';");
+        while (rs.next()) {
+            count = rs.getInt(1);
         }
+
         if (count == 0) {
             return; // no unfulfilled asks of the same stock
         }
@@ -321,11 +324,16 @@ public class ExchangeBean {
         // A match happens if the lowest ask is <= highest bid
         if (lowestAsk.getPrice() <= highestBid.getPrice()) {
             // a match is found!
-            unfulfilledBids.remove(highestBid);
-            unfulfilledAsks.remove(lowestAsk);
+            updateSQL("update bid set has_transacted=1 where id=" + highestBid.getId());  //remove highest bid
+            updateSQL("update ask set has_transacted=1 where id=" + lowestAsk.getId());  //remove lowest ask
+
             // this is a SELLING trade - the transaction happens at the lowest ask's timestamp, and the transaction price happens at the highest bid
             MatchedTransaction match = new MatchedTransaction(highestBid, lowestAsk, lowestAsk.getDate(), highestBid.getPrice());
-            matchedTransactions.add(match);
+            String sqlMatchTransaction =
+                    String.format("insert into transaction (bid_id, ask_id, date, price, stock) values (%d, %d, '%s', %d, '%s');",
+                    highestBid.getId(), lowestAsk.getId(), lowestAsk.getFormattedDate(), highestBid.getPrice(), highestBid.getStock());
+            System.out.println(sqlMatchTransaction);
+            updateSQL(sqlMatchTransaction);
 
             // to be included here: inform Back Office Server of match
             // to be done in v1.0
@@ -362,7 +370,7 @@ public class ExchangeBean {
         }
         return -1; // no such stock
     }
-    
+
     // used to execute a generic select SQL statement
     public ResultSet execSQL(String sql) throws SQLException {
         Statement s = dbCon.createStatement();
