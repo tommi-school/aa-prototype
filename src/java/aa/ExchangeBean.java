@@ -7,7 +7,7 @@ import java.sql.*;
 public class ExchangeBean {
 
     // change the dbURL if necessary.
-    String dbURL = "jdbc:mysql://localhost/exchange";
+    String dbURL = "jdbc:mysql://localhost:3306/exchange";
     String dbDriver = "com.mysql.jdbc.Driver";
     private Connection dbCon;
     // location of log files - change if necessary
@@ -38,7 +38,7 @@ public class ExchangeBean {
         Class.forName(dbDriver);
 
         // login credentials to your MySQL server
-        dbCon = DriverManager.getConnection(dbURL, "root", "password"); 
+        dbCon = DriverManager.getConnection(dbURL, "root", "");
         return true;
     }
 
