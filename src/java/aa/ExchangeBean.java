@@ -108,7 +108,7 @@ public class ExchangeBean {
     private Bid getHighestBid(String stock) throws SQLException {
         Bid highestBid = new Bid(null, 0, null);
         String sql = String.format(
-                "select * from bid where stock='%s' and price=(select max(price) from bid where stock='%s' and has_transacted is null) and date=(select min(date) from bid where stock='%s' and price=(select max(price) from bid where stock='%s' and has_transacted is null));",
+                "select * from bid where stock='%s' and price=(select max(price) from bid where stock='%s' and has_transacted is null) and date=(select min(date) from bid where stock='%s' and price=(select max(price) from bid where stock='%s' and has_transacted is null) and has_transacted is null);",
                 stock, stock, stock, stock);
 
         ResultSet rs = execSQL(sql);
@@ -139,7 +139,7 @@ public class ExchangeBean {
     // if there are 2 asks of the same ask amount, the earlier one is considered the highest ask
     private Ask getLowestAsk(String stock) throws SQLException {
         Ask lowestAsk = new Ask(null, Integer.MAX_VALUE, null);
-        String sql = String.format("select * from ask where stock='%s' and price=(select min(price) from ask where stock='%s' and has_transacted is null) and date=(select min(date) from ask where stock='%s' and price=(select min(price) from ask where stock='%s' and has_transacted is null));",
+        String sql = String.format("select * from ask where stock='%s' and price=(select min(price) from ask where stock='%s' and has_transacted is null) and date=(select min(date) from ask where stock='%s' and price=(select min(price) from ask where stock='%s' and has_transacted is null) and has_transacted is null);",
                 stock, stock, stock, stock);
 
         ResultSet rs = execSQL(sql);
