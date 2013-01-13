@@ -15,13 +15,6 @@ public class ExchangeBean {
     private final String REJECTED_BUY_ORDERS_LOG_FILE = "c:\\temp\\rejected.log";
     // used to calculate remaining credit available for buyers
     private final int DAILY_CREDIT_LIMIT_FOR_BUYERS = 1000000;
-    // used for keeping track of unfulfilled asks and bids in the system.
-    // once asks or bids are matched, they must be removed from these arraylists.
-    private ArrayList<Ask> unfulfilledAsks = new ArrayList<Ask>();
-    private ArrayList<Bid> unfulfilledBids = new ArrayList<Bid>();
-    // used to keep track of all matched transactions (asks/bids) in the system
-    // matchedTransactions is cleaned once the records are written to the log file successfully
-    private ArrayList<MatchedTransaction> matchedTransactions = new ArrayList<MatchedTransaction>();
     // keeps track of the latest price for each of the 3 stocks
     private int latestPriceForSmu = -1;
     private int latestPriceForNus = -1;
